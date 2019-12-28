@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/songgao/water"
+	"github.com/eycorsican/water"
 )
 
 type Tun struct {
@@ -14,7 +14,6 @@ type Tun struct {
 	Cidr         *net.IPNet
 	MTU          int
 	UnsafeRoutes []route
-
 	*water.Interface
 }
 
@@ -22,11 +21,11 @@ func newTun(deviceName string, cidr *net.IPNet, defaultMTU int, routes []route, 
 	if len(routes) > 0 {
 		return nil, fmt.Errorf("Route MTU not supported in Darwin")
 	}
-	// NOTE: You cannot set the deviceName under Darwin, so you must check tun.Device after calling .Activate()
 	return &Tun{
 		Cidr:         cidr,
 		MTU:          defaultMTU,
 		UnsafeRoutes: unsafeRoutes,
+		Device:       deviceName,
 	}, nil
 }
 
@@ -34,12 +33,15 @@ func (c *Tun) Activate() error {
 	var err error
 	c.Interface, err = water.New(water.Config{
 		DeviceType: water.TUN,
+		PlatformSpecificParams: water.PlatformSpecificParams{
+			Name: c.Device,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("Activate failed: %v", err)
 	}
 
-	c.Device = c.Interface.Name()
+	//c.Device = c.Interface.Name()
 
 	// TODO use syscalls instead of exec.Command
 	if err = exec.Command("ifconfig", c.Device, c.Cidr.String(), c.Cidr.IP.String()).Run(); err != nil {
